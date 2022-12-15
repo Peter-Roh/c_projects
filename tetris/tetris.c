@@ -1,8 +1,8 @@
 #include <raylib.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <time.h>
 #include <math.h>
+#include <time.h>
 
 // --------------------------------------------------
 // defines
@@ -73,12 +73,12 @@ void draw_init_page(void) {
     struct timespec specific_time;
     int time_seed;
     clock_gettime(CLOCK_REALTIME, &specific_time);
-    time_seed = floor(specific_time.tv_nsec / 1.0e8);
+    time_seed = floor(specific_time.tv_nsec / 1.0e6);
 
-    if(time_seed % 2 == 0) {
+    if(time_seed < 500) {
         DrawText("Please press Enter to start...", offset.x, offset.y, 20, BLACK);
     } else {
-        DrawText("Please press Enter to start...", offset.x, offset.y, 20, GRAY);
+        DrawText("Please press Enter to start...", offset.x, offset.y, 20, WHITE);
     }
 
     triangle1.x = offset.x + 30;
@@ -160,23 +160,40 @@ void draw_map(void) {
     BeginDrawing();
     ClearBackground(WHITE);
 
+    int i;
+    int j;
     Vector2 offset;
     offset.x = 42;
     offset.y = 22;
 
-    for(int i = 0; i <16; ++i) {
-        offset.y += (SQUARE_SIZE + 2);
-        DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, GRAY);
+    for(i = 0; i <16; ++i) {
+        offset.y += (SQUARE_SIZE);
+        DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, LIGHTGRAY);
     }
 
-    for(int i = 0; i < 11; ++i) {
-        offset.x += (SQUARE_SIZE + 2);
-        DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, GRAY);
+    for(i = 0; i < 11; ++i) {
+        offset.x += (SQUARE_SIZE);
+        DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, LIGHTGRAY);
     }
 
-    for(int i = 0; i <15; ++i) {
-        offset.y -= (SQUARE_SIZE + 2);
-        DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, GRAY);
+    for(i = 0; i <15; ++i) {
+        offset.y -= (SQUARE_SIZE);
+        DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, LIGHTGRAY);
+    }
+
+    offset.x += (SQUARE_SIZE * 3);
+    offset.y += (SQUARE_SIZE);
+
+    for(i = 0; i < 4; ++i) {
+        for(j = 0; j < 4; ++j) {
+            DrawLine(offset.x, offset.y, offset.x + SQUARE_SIZE, offset.y, LIGHTGRAY);
+            DrawLine(offset.x, offset.y, offset.x, offset.y + SQUARE_SIZE, LIGHTGRAY);
+            DrawLine(offset.x + SQUARE_SIZE, offset.y, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, LIGHTGRAY);
+            DrawLine(offset.x, offset.y + SQUARE_SIZE, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, LIGHTGRAY);
+            offset.x += SQUARE_SIZE;
+        }
+        offset.y += SQUARE_SIZE;
+        offset.x -= (SQUARE_SIZE * 4);
     }
 
     EndDrawing();
