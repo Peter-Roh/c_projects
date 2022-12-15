@@ -156,10 +156,33 @@ void check_game_start(void) {
 void init_game(void) {
 }
 
-void update_draw_frame(void) {
+void draw_map(void) {
     BeginDrawing();
     ClearBackground(WHITE);
+
+    Vector2 offset;
+    offset.x = 42;
+    offset.y = 22;
+
+    for(int i = 0; i <16; ++i) {
+        offset.y += (SQUARE_SIZE + 2);
+        DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, GRAY);
+    }
+
+    for(int i = 0; i < 11; ++i) {
+        offset.x += (SQUARE_SIZE + 2);
+        DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, GRAY);
+    }
+
+    for(int i = 0; i <15; ++i) {
+        offset.y -= (SQUARE_SIZE + 2);
+        DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, GRAY);
+    }
+
     EndDrawing();
+}
+
+void update_draw_frame(void) {
 }
 
 // unload game variables
@@ -176,7 +199,8 @@ int main(void) {
             draw_init_page();
             check_game_start();
         } else {
-            update_draw_frame();
+            draw_map();
+            // update_draw_frame();
         }
     }
 
