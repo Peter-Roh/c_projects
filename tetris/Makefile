@@ -1,6 +1,8 @@
 CC=clang
 CFLAGS=-W -pedantic-errors
 
+all: clean tetris
+
 tetris: tetris.o
 	clang tetris.o `pkg-config --libs raylib` -o tetris
 

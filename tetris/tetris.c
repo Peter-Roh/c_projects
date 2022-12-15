@@ -1,17 +1,19 @@
 #include <raylib.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <time.h>
+#include <math.h>
+
+// --------------------------------------------------
+// defines
+// --------------------------------------------------
+#define SQUARE_SIZE 20
 
 // --------------------------------------------------
 // types and structures
 // --------------------------------------------------
-typedef enum grid_square {
-    EMPTY,
-    MOVING,
-    FULL,
-    BLOCK,
-    FADING
-} grid_square_t;
+
+
 
 // --------------------------------------------------
 // global variables
@@ -19,15 +21,14 @@ typedef enum grid_square {
 static const int SCREEN_WIDTH = 442;
 static const int SCREEN_HEIGHT = 450;
 
-static bool bGameOver = false;
-
+static bool b_game_over = false;
+static bool b_begin_game = false;
 static int g_level = 1;
 
-static grid_square_t init_header[5][20];
+// --------------------------------------------------
+// counters
+// --------------------------------------------------
 
-#define SQUARE_SIZE 20
-#define GRID_X_SIZE 12
-#define GRID_Y_SIZE 20
 
 void draw_init_page(void) {
     BeginDrawing();
@@ -40,7 +41,6 @@ void draw_init_page(void) {
 
     offset.x = 2;
     offset.y = 2;
-
 
     for(int i = 0; i < 5; ++i) {
         for(int j = 0; j < 20; ++j) {
@@ -70,7 +70,16 @@ void draw_init_page(void) {
     offset.x = 60;
     offset.y += 50;
 
-    DrawText("Please press Enter to start...", offset.x, offset.y, 20, BLACK);
+    struct timespec specific_time;
+    int time_seed;
+    clock_gettime(CLOCK_REALTIME, &specific_time);
+    time_seed = floor(specific_time.tv_nsec / 1.0e8);
+
+    if(time_seed % 2 == 0) {
+        DrawText("Please press Enter to start...", offset.x, offset.y, 20, BLACK);
+    } else {
+        DrawText("Please press Enter to start...", offset.x, offset.y, 20, GRAY);
+    }
 
     triangle1.x = offset.x + 30;
     triangle1.y = offset.y + 50;
@@ -136,11 +145,21 @@ void draw_init_page(void) {
     EndDrawing();
 }
 
+// when pressed ENTER key, game begins
+void check_game_start(void) {
+    if(IsKeyPressed(KEY_ENTER)) {
+        b_begin_game = true;
+    }
+}
+
 // initialize game variables
 void init_game(void) {
 }
 
 void update_draw_frame(void) {
+    BeginDrawing();
+    ClearBackground(WHITE);
+    EndDrawing();
 }
 
 // unload game variables
@@ -153,8 +172,12 @@ int main(void) {
 
     // main game loop
     while (!WindowShouldClose()) {
-        draw_init_page();
-        update_draw_frame();
+        if(!b_begin_game) {
+            draw_init_page();
+            check_game_start();
+        } else {
+            update_draw_frame();
+        }
     }
 
     unload_game();
