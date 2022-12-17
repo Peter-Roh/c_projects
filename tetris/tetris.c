@@ -8,12 +8,19 @@
 // defines
 // --------------------------------------------------
 #define SQUARE_SIZE 20
+#define GRID_X_SIZE 12
+#define GRID_Y_SIZE 21
 
 // --------------------------------------------------
 // types and structures
 // --------------------------------------------------
-
-
+typedef enum grid_square {
+    EMPTY,
+    MOVING,
+    FULL,
+    BLOCK,
+    FADING
+} grid_square_t;
 
 // --------------------------------------------------
 // global variables
@@ -23,7 +30,17 @@ static const int SCREEN_HEIGHT = 450;
 
 static bool b_game_over = false;
 static bool b_begin_game = false;
+static bool b_pause = false;
+
 static int g_level = 1;
+static int g_speed = 30;
+
+static grid_square_t grid[GRID_X_SIZE][GRID_Y_SIZE];
+static grid_square_t piece[4][4];
+static grid_square_t incomingPiece[4][4];
+
+static int piece_position_x = 0;
+static int piece_position_y = 0;
 
 // --------------------------------------------------
 // counters
@@ -154,6 +171,28 @@ void check_game_start(void) {
 
 // initialize game variables
 void init_game(void) {
+    int i;
+    int j;
+
+    b_pause = false;
+    g_level = 1;
+    g_speed = 30;
+
+    for(i = 0; i < GRID_X_SIZE; ++i) {
+        for(int j = 0; j < GRID_Y_SIZE; ++j) {
+            if((j == GRID_Y_SIZE - 1) || (i == 0) || (i == GRID_X_SIZE - 1)) {
+                grid[i][j] = BLOCK;
+            } else {
+                grid[i][j] = EMPTY;
+            }
+        }
+    }
+
+    for(i = 0; i < 4; ++i) {
+        for(j = 0; j < 4; ++j) {
+            incomingPiece[i][j] = EMPTY;
+        }
+    }
 }
 
 void draw_map(void) {
@@ -163,43 +202,74 @@ void draw_map(void) {
     int i;
     int j;
     Vector2 offset;
-    offset.x = 42;
-    offset.y = 22;
+    offset.x = 22;
+    offset.y = 12;
 
-    for(i = 0; i <16; ++i) {
-        offset.y += (SQUARE_SIZE);
-        DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, LIGHTGRAY);
-    }
+    int controller_x = offset.x;
+    int controller_y = offset.y;
 
-    for(i = 0; i < 11; ++i) {
-        offset.x += (SQUARE_SIZE);
-        DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, LIGHTGRAY);
-    }
+    for(j = 0; j < GRID_Y_SIZE; ++j) {
+        for(i = 0; i < GRID_X_SIZE; ++i) {
+            if(grid[i][j] == EMPTY) {
+                DrawLine(offset.x, offset.y, offset.x + SQUARE_SIZE, offset.y, LIGHTGRAY);
+                DrawLine(offset.x, offset.y, offset.x, offset.y + SQUARE_SIZE, LIGHTGRAY);
+                DrawLine(offset.x + SQUARE_SIZE, offset.y, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, LIGHTGRAY);
+                DrawLine(offset.x, offset.y + SQUARE_SIZE, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, LIGHTGRAY);
+            } else if(grid[i][j] == BLOCK) {
+                DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, LIGHTGRAY);
+            }
 
-    for(i = 0; i <15; ++i) {
-        offset.y -= (SQUARE_SIZE);
-        DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, LIGHTGRAY);
-    }
-
-    offset.x += (SQUARE_SIZE * 3);
-    offset.y += (SQUARE_SIZE);
-
-    for(i = 0; i < 4; ++i) {
-        for(j = 0; j < 4; ++j) {
-            DrawLine(offset.x, offset.y, offset.x + SQUARE_SIZE, offset.y, LIGHTGRAY);
-            DrawLine(offset.x, offset.y, offset.x, offset.y + SQUARE_SIZE, LIGHTGRAY);
-            DrawLine(offset.x + SQUARE_SIZE, offset.y, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, LIGHTGRAY);
-            DrawLine(offset.x, offset.y + SQUARE_SIZE, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, LIGHTGRAY);
             offset.x += SQUARE_SIZE;
         }
+        offset.x = controller_x;
         offset.y += SQUARE_SIZE;
-        offset.x -= (SQUARE_SIZE * 4);
+    }
+
+    offset.x += (SQUARE_SIZE * (GRID_X_SIZE + 3));
+    offset.y = controller_y + (SQUARE_SIZE);
+    controller_x = offset.x;
+    controller_y = offset.y;
+
+    DrawText("INCOMING:", offset.x, offset.y - 20, 10, GRAY);
+    for(j = 0; j < 4; ++j) {
+        for(i = 0; i < 4; ++i) {
+            if(incomingPiece[i][j] == EMPTY) {
+                DrawLine(offset.x, offset.y, offset.x + SQUARE_SIZE, offset.y, LIGHTGRAY);
+                DrawLine(offset.x, offset.y, offset.x, offset.y + SQUARE_SIZE, LIGHTGRAY);
+                DrawLine(offset.x + SQUARE_SIZE, offset.y, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, LIGHTGRAY);
+                DrawLine(offset.x, offset.y + SQUARE_SIZE, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, LIGHTGRAY);
+            } else if(incomingPiece[i][j] == MOVING) {
+                DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, GRAY);
+            }
+
+            offset.x += SQUARE_SIZE;
+        }
+        offset.x = controller_x;
+        offset.y += SQUARE_SIZE;
+    }
+
+    offset.y += SQUARE_SIZE;
+    DrawText(TextFormat("Level: %02d", g_level), offset.x, offset.y, 12, GRAY);
+
+    if(b_pause) {
+        DrawText("GAME PAUSED", (SCREEN_WIDTH - MeasureText("GAME_PAUSED", 40)) / 2, SCREEN_HEIGHT / 2 - 40 , 40, GRAY);
     }
 
     EndDrawing();
 }
 
 void update_draw_frame(void) {
+    if(!b_game_over) {
+        if(IsKeyPressed(KEY_P)) {
+            b_pause = !b_pause;
+        }
+    }
+}
+
+void create_piece() {
+}
+
+void get_random_piece() {
 }
 
 // unload game variables
@@ -216,8 +286,8 @@ int main(void) {
             draw_init_page();
             check_game_start();
         } else {
+            update_draw_frame();
             draw_map();
-            // update_draw_frame();
         }
     }
 
