@@ -30,24 +30,46 @@ static const int SCREEN_HEIGHT = 450;
 
 static bool b_game_over = false;
 static bool b_begin_game = false;
+static bool b_begin_play = true; // only true at first. used for the first block creation
 static bool b_pause = false;
+static bool b_piece_active = false;
 
 static int g_level = 1;
 static int g_speed = 30;
 
-static grid_square_t grid[GRID_X_SIZE][GRID_Y_SIZE];
+static grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE];
 static grid_square_t piece[4][4];
 static grid_square_t incomingPiece[4][4];
 
 static int piece_position_x = 0;
 static int piece_position_y = 0;
 
+static Color current_piece_color;
+static Color incoming_piece_color;
+
 // --------------------------------------------------
 // counters
 // --------------------------------------------------
 
 
-void draw_init_page(void) {
+// --------------------------------------------------
+// function declarations
+// --------------------------------------------------
+static void draw_init_page(void);
+static void check_game_start(void);
+static void clean_incoming_piece(void);
+static void init_game(void);
+static void draw_map(void);
+static void update_draw_frame(void);
+static bool create_piece(void);
+static int get_random_piece(void);
+Color get_piece_color(int num);
+static void unload_game(void);
+
+// --------------------------------------------------
+// function definitions
+// --------------------------------------------------
+static void draw_init_page(void) {
     BeginDrawing();
     ClearBackground(WHITE);
 
@@ -163,30 +185,15 @@ void draw_init_page(void) {
 }
 
 // when pressed ENTER key, game begins
-void check_game_start(void) {
+static void check_game_start(void) {
     if(IsKeyPressed(KEY_ENTER)) {
         b_begin_game = true;
     }
 }
 
-// initialize game variables
-void init_game(void) {
+static void clean_incoming_piece(void) {
     int i;
     int j;
-
-    b_pause = false;
-    g_level = 1;
-    g_speed = 30;
-
-    for(i = 0; i < GRID_X_SIZE; ++i) {
-        for(int j = 0; j < GRID_Y_SIZE; ++j) {
-            if((j == GRID_Y_SIZE - 1) || (i == 0) || (i == GRID_X_SIZE - 1)) {
-                grid[i][j] = BLOCK;
-            } else {
-                grid[i][j] = EMPTY;
-            }
-        }
-    }
 
     for(i = 0; i < 4; ++i) {
         for(j = 0; j < 4; ++j) {
@@ -195,7 +202,30 @@ void init_game(void) {
     }
 }
 
-void draw_map(void) {
+// initialize game variables
+static void init_game(void) {
+    int i;
+    int j;
+
+    b_pause = false;
+    b_begin_play = true;
+    g_level = 1;
+    g_speed = 30;
+
+    for(i = 0; i < GRID_Y_SIZE; ++i) {
+        for(int j = 0; j < GRID_X_SIZE; ++j) {
+            if((i == GRID_Y_SIZE - 1) || (j == 0) || (j == GRID_X_SIZE - 1)) {
+                grid[i][j] = BLOCK;
+            } else {
+                grid[i][j] = EMPTY;
+            }
+        }
+    }
+
+    clean_incoming_piece();
+}
+
+static void draw_map(void) {
     BeginDrawing();
     ClearBackground(WHITE);
 
@@ -208,15 +238,17 @@ void draw_map(void) {
     int controller_x = offset.x;
     int controller_y = offset.y;
 
-    for(j = 0; j < GRID_Y_SIZE; ++j) {
-        for(i = 0; i < GRID_X_SIZE; ++i) {
+    for(i = 0; i < GRID_Y_SIZE; ++i) {
+        for(j = 0; j < GRID_X_SIZE; ++j) {
             if(grid[i][j] == EMPTY) {
                 DrawLine(offset.x, offset.y, offset.x + SQUARE_SIZE, offset.y, LIGHTGRAY);
                 DrawLine(offset.x, offset.y, offset.x, offset.y + SQUARE_SIZE, LIGHTGRAY);
                 DrawLine(offset.x + SQUARE_SIZE, offset.y, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, LIGHTGRAY);
                 DrawLine(offset.x, offset.y + SQUARE_SIZE, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, LIGHTGRAY);
             } else if(grid[i][j] == BLOCK) {
-                DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, LIGHTGRAY);
+                DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, GRAY);
+            } else if(grid[i][j] == MOVING) {
+                DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, current_piece_color);
             }
 
             offset.x += SQUARE_SIZE;
@@ -231,21 +263,21 @@ void draw_map(void) {
     controller_y = offset.y;
 
     DrawText("INCOMING:", offset.x, offset.y - 20, 10, GRAY);
-    for(j = 0; j < 4; ++j) {
-        for(i = 0; i < 4; ++i) {
+    for(i = 0; i < 4; ++i) {
+        for(j = 0; j < 4; ++j) {
             if(incomingPiece[i][j] == EMPTY) {
                 DrawLine(offset.x, offset.y, offset.x + SQUARE_SIZE, offset.y, LIGHTGRAY);
                 DrawLine(offset.x, offset.y, offset.x, offset.y + SQUARE_SIZE, LIGHTGRAY);
                 DrawLine(offset.x + SQUARE_SIZE, offset.y, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, LIGHTGRAY);
                 DrawLine(offset.x, offset.y + SQUARE_SIZE, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, LIGHTGRAY);
             } else if(incomingPiece[i][j] == MOVING) {
-                DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, GRAY);
+                DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, incoming_piece_color);
             }
 
             offset.x += SQUARE_SIZE;
         }
-        offset.x = controller_x;
-        offset.y += SQUARE_SIZE;
+            offset.x = controller_x;
+            offset.y += SQUARE_SIZE;
     }
 
     offset.y += SQUARE_SIZE;
@@ -258,22 +290,133 @@ void draw_map(void) {
     EndDrawing();
 }
 
-void update_draw_frame(void) {
+static void update_draw_frame(void) {
     if(!b_game_over) {
         if(IsKeyPressed(KEY_P)) {
             b_pause = !b_pause;
         }
+
+        if(!b_pause) {
+            if(!b_piece_active) {
+                b_piece_active = create_piece();
+            }
+        }
     }
 }
 
-void create_piece() {
+static bool create_piece(void) {
+    int piece_num;
+
+    if(b_begin_play) {
+        piece_num = get_random_piece();
+        current_piece_color = get_piece_color(piece_num);
+        b_begin_play = false;
+    }
+
+    for(int i = 0; i < 4; ++i) {
+        for(int j = 0; j < 4; ++j) {
+            piece[i][j] = incomingPiece[i][j];
+        }
+    }
+
+    piece_num = get_random_piece();
+    incoming_piece_color = get_piece_color(piece_num);
+
+    for(int i = 0; i < 4; ++i) {
+        for(int j = 0; j < 4; ++j) {
+            if(piece[i][j] == MOVING) {
+                grid[i][j + 4] = MOVING;
+            }
+        }
+    }
+
+    return true;
 }
 
-void get_random_piece() {
+static int get_random_piece(void) {
+    int random = GetRandomValue(0, 6);
+    clean_incoming_piece();
+
+    switch(random) {
+        case 0: // cube
+            incomingPiece[1][1] = MOVING;
+            incomingPiece[1][2] = MOVING;
+            incomingPiece[2][1] = MOVING;
+            incomingPiece[2][2] = MOVING;
+            break;
+        case 1: // L
+            incomingPiece[0][1] = MOVING;
+            incomingPiece[1][1] = MOVING;
+            incomingPiece[2][1] = MOVING;
+            incomingPiece[2][2] = MOVING;
+            break;
+        case 2: // J
+            incomingPiece[0][2] = MOVING;
+            incomingPiece[1][2] = MOVING;
+            incomingPiece[2][2] = MOVING;
+            incomingPiece[2][1] = MOVING;
+            break;
+        case 3: // I
+            incomingPiece[0][1] = MOVING;
+            incomingPiece[1][1] = MOVING;
+            incomingPiece[2][1] = MOVING;
+            incomingPiece[3][1] = MOVING;
+            break;
+        case 4: // T
+            incomingPiece[0][1] = MOVING;
+            incomingPiece[1][1] = MOVING;
+            incomingPiece[2][1] = MOVING;
+            incomingPiece[1][2] = MOVING;
+            break;
+        case 5: // S
+            incomingPiece[0][1] = MOVING;
+            incomingPiece[1][1] = MOVING;
+            incomingPiece[1][2] = MOVING;
+            incomingPiece[2][2] = MOVING;
+            break;
+        case 6: // Z
+            incomingPiece[0][2] = MOVING;
+            incomingPiece[1][1] = MOVING;
+            incomingPiece[1][2] = MOVING;
+            incomingPiece[2][1] = MOVING;
+            break;
+    }
+
+    return random;
+}
+
+Color get_piece_color(int num) {
+    Color piece_color;
+
+    switch(num) {
+        case 0: // cube
+            piece_color = GOLD;
+            break;
+        case 1: // L
+            piece_color = DARKGREEN;
+            break;
+        case 2: // J
+            piece_color = ORANGE;
+            break;
+        case 3: // I
+            piece_color = PINK;
+            break;
+        case 4: // T
+            piece_color = SKYBLUE;
+            break;
+        case 5: // S
+            piece_color = VIOLET;
+            break;
+        case 6: // Z
+            piece_color = MAROON;
+            break;
+    }
+
+    return piece_color;
 }
 
 // unload game variables
-void unload_game(void) {
+static void unload_game(void) {
 }
 
 int main(void) {
@@ -286,6 +429,7 @@ int main(void) {
             draw_init_page();
             check_game_start();
         } else {
+            
             update_draw_frame();
             draw_map();
         }
