@@ -48,6 +48,7 @@ static grid_square_t hold_piece[4][4];
 static int piece_position_x = 0;
 static int piece_position_y = 0;
 static int current_piece_num;
+static int finished_piece_num;
 
 static Color current_piece_color;
 static Color incoming_piece_color;
@@ -67,6 +68,7 @@ static void clean_4_by_4(grid_square_t arr[][4]);
 static void init_game(void);
 static void draw_map(void);
 static void update_draw_frame(void);
+static void record_colored_grid(const int piece_num);
 static void check_detection(bool* b_detection);
 static void resolve_falling_movement(bool* b_detection, bool* b_piece_active);
 static void check_completion(bool* b_line_to_delete);
@@ -232,6 +234,8 @@ static void init_game(void) {
             } else {
                 grid[i][j] = EMPTY;
             }
+
+            colors_grid[i][j] = -1;
         }
     }
 
@@ -245,6 +249,7 @@ static void draw_map(void) {
 
     int i;
     int j;
+    Color square_color;
     Vector2 offset;
     offset.x = 22;
     offset.y = 12;
@@ -264,7 +269,8 @@ static void draw_map(void) {
             } else if(grid[i][j] == MOVING) {
                 DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, current_piece_color);
             } else if(grid[i][j] == FULL) {
-                DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, GRAY);
+                square_color = get_piece_color(colors_grid[i][j]);
+                DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, square_color);
             }
 
             offset.x += SQUARE_SIZE;
@@ -349,6 +355,16 @@ static void update_draw_frame(void) {
     }
 }
 
+static void record_colored_grid(const int piece_num) {
+        for(int i = GRID_Y_SIZE - 2; i >= 0 ; --i) {
+            for(int j = 1; j < GRID_X_SIZE - 1; ++j) {
+                if(grid[i][j] == FULL && colors_grid[i][j] == -1) {
+                    colors_grid[i][j] = piece_num;
+                }
+            }
+        }
+}
+
 static void check_detection(bool* b_detection) {
     for(int i = GRID_Y_SIZE - 2; i >= 0 ; --i) {
         for(int j = 1; j < GRID_X_SIZE - 1; ++j) {
@@ -370,6 +386,7 @@ static void resolve_falling_movement(bool* b_detection, bool* b_piece_active) {
                 }
             }
         }
+        record_colored_grid(finished_piece_num);
     } else { // move piece down
         for(int i = GRID_Y_SIZE - 2; i >= 0 ; --i) {
             for(int j = 1; j < GRID_X_SIZE - 1; ++j) {
@@ -421,6 +438,9 @@ static bool create_piece(void) {
     }
 
     current_piece_color = get_piece_color(current_piece_num);
+    finished_piece_num = current_piece_num;
+
+    // assign next random piece
     piece_num = get_random_piece();
     current_piece_num = piece_num;
     incoming_piece_color = get_piece_color(piece_num);
