@@ -10,6 +10,8 @@
 #define SQUARE_SIZE 20
 #define GRID_X_SIZE 12
 #define GRID_Y_SIZE 21
+#define LATERAL_SPEED 15
+#define TURNING_SPEED 12
 
 // --------------------------------------------------
 // types and structures
@@ -29,7 +31,7 @@ static const int SCREEN_WIDTH = 442;
 static const int SCREEN_HEIGHT = 450;
 
 static bool b_game_over = false;
-static bool b_begin_game = false;
+static bool b_begin_game = false; // 시작 화면에서 게임 화면으로 넘어가기 위해 사용
 static bool b_begin_play = true; // only true at first. used for the first block creation
 static bool b_pause = false;
 static bool b_piece_active = false;
@@ -58,19 +60,23 @@ static Color hold_piece_color;
 // counters
 // --------------------------------------------------
 static int gravity_movement_counter = 0;
+static int lateral_movement_counter = 0;
+static int turn_movement_counter = 0;
 
 // --------------------------------------------------
 // function declarations
 // --------------------------------------------------
 static void draw_init_page(void);
 static void check_game_start(void);
-static void clean_4_by_4(grid_square_t arr[][4]);
+static void clean_4_by_4(grid_square_t arr[4][4]);
 static void init_game(void);
 static void draw_map(void);
 static void update_draw_frame(void);
 static void record_colored_grid(const int piece_num);
 static void check_detection(bool* b_detection);
 static void resolve_falling_movement(bool* b_detection, bool* b_piece_active);
+static bool resolve_lateral_movement(void);
+static bool resolve_turn_movement(void);
 static void check_completion(bool* b_line_to_delete);
 static bool create_piece(void);
 static int get_random_piece(void);
@@ -207,7 +213,7 @@ static void check_game_start(void) {
     }
 }
 
-static void clean_4_by_4(grid_square_t arr[][4]) {
+static void clean_4_by_4(grid_square_t arr[4][4]) {
     for(int i = 0; i < 4; ++i) {
         for(int j = 0; j < 4; ++j) {
             arr[i][j] = EMPTY;
@@ -226,6 +232,8 @@ static void init_game(void) {
     g_speed = 30;
 
     gravity_movement_counter = 0;
+    lateral_movement_counter = 0;
+    turn_movement_counter = 0;
 
     for(i = 0; i < GRID_Y_SIZE; ++i) {
         for(int j = 0; j < GRID_X_SIZE; ++j) {
@@ -239,94 +247,102 @@ static void init_game(void) {
         }
     }
 
-    clean_4_by_4(incoming_piece);
-    clean_4_by_4(hold_piece);
+    for(int i = 0; i < 4; ++i) {
+        for(int j = 0; j < 4; ++j) {
+            incoming_piece[i][j] = EMPTY;
+            hold_piece[i][j] = EMPTY;
+            piece[i][j] = EMPTY;
+        }
+    }
 }
 
 static void draw_map(void) {
     BeginDrawing();
     ClearBackground(WHITE);
 
-    int i;
-    int j;
-    Color square_color;
-    Vector2 offset;
-    offset.x = 22;
-    offset.y = 12;
+    if(!b_game_over) {
+        int i;
+        int j;
+        Color square_color;
+        Vector2 offset;
+        offset.x = 22;
+        offset.y = 12;
+        int controller_x = offset.x;
+        int controller_y = offset.y;
 
-    int controller_x = offset.x;
-    int controller_y = offset.y;
+        for(i = 0; i < GRID_Y_SIZE; ++i) {
+            for(j = 0; j < GRID_X_SIZE; ++j) {
+                if(grid[i][j] == EMPTY) {
+                    DrawLine(offset.x, offset.y, offset.x + SQUARE_SIZE, offset.y, LIGHTGRAY);
+                    DrawLine(offset.x, offset.y, offset.x, offset.y + SQUARE_SIZE, LIGHTGRAY);
+                    DrawLine(offset.x + SQUARE_SIZE, offset.y, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, LIGHTGRAY);
+                    DrawLine(offset.x, offset.y + SQUARE_SIZE, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, LIGHTGRAY);
+                } else if(grid[i][j] == BLOCK) {
+                    DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, GRAY);
+                } else if(grid[i][j] == MOVING) {
+                    DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, current_piece_color);
+                } else if(grid[i][j] == FULL) {
+                    square_color = get_piece_color(colors_grid[i][j]);
+                    DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, square_color);
+                }
 
-    for(i = 0; i < GRID_Y_SIZE; ++i) {
-        for(j = 0; j < GRID_X_SIZE; ++j) {
-            if(grid[i][j] == EMPTY) {
-                DrawLine(offset.x, offset.y, offset.x + SQUARE_SIZE, offset.y, LIGHTGRAY);
-                DrawLine(offset.x, offset.y, offset.x, offset.y + SQUARE_SIZE, LIGHTGRAY);
-                DrawLine(offset.x + SQUARE_SIZE, offset.y, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, LIGHTGRAY);
-                DrawLine(offset.x, offset.y + SQUARE_SIZE, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, LIGHTGRAY);
-            } else if(grid[i][j] == BLOCK) {
-                DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, GRAY);
-            } else if(grid[i][j] == MOVING) {
-                DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, current_piece_color);
-            } else if(grid[i][j] == FULL) {
-                square_color = get_piece_color(colors_grid[i][j]);
-                DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, square_color);
+                offset.x += SQUARE_SIZE;
             }
-
-            offset.x += SQUARE_SIZE;
+            offset.x = controller_x;
+            offset.y += SQUARE_SIZE;
         }
-        offset.x = controller_x;
+
+        offset.x += (SQUARE_SIZE * (GRID_X_SIZE + 3));
+        offset.y = controller_y + (SQUARE_SIZE);
+        controller_x = offset.x;
+        controller_y = offset.y;
+
+        DrawText("INCOMING:", offset.x, offset.y - 20, 10, GRAY);
+        for(i = 0; i < 4; ++i) {
+            for(j = 0; j < 4; ++j) {
+                if(incoming_piece[i][j] == EMPTY) {
+                    DrawLine(offset.x, offset.y, offset.x + SQUARE_SIZE, offset.y, LIGHTGRAY);
+                    DrawLine(offset.x, offset.y, offset.x, offset.y + SQUARE_SIZE, LIGHTGRAY);
+                    DrawLine(offset.x + SQUARE_SIZE, offset.y, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, LIGHTGRAY);
+                    DrawLine(offset.x, offset.y + SQUARE_SIZE, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, LIGHTGRAY);
+                } else if(incoming_piece[i][j] == MOVING) {
+                    DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, incoming_piece_color);
+                }
+                offset.x += SQUARE_SIZE;
+            }
+                offset.x = controller_x;
+                offset.y += SQUARE_SIZE;
+        }
+
+        offset.y += (SQUARE_SIZE * 2);
+        controller_y = offset.y;
+
+        DrawText("HOLD:", offset.x, offset.y - 20, 10, GRAY);
+        for(i = 0; i < 4; ++i) {
+            for(j = 0; j < 4; ++j) {
+                if(hold_piece[i][j] == EMPTY) {
+                    DrawLine(offset.x, offset.y, offset.x + SQUARE_SIZE, offset.y, LIGHTGRAY);
+                    DrawLine(offset.x, offset.y, offset.x, offset.y + SQUARE_SIZE, LIGHTGRAY);
+                    DrawLine(offset.x + SQUARE_SIZE, offset.y, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, LIGHTGRAY);
+                    DrawLine(offset.x, offset.y + SQUARE_SIZE, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, LIGHTGRAY);
+                } else if(hold_piece[i][j] == MOVING) {
+                    DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, hold_piece_color);
+                }
+
+                offset.x += SQUARE_SIZE;
+            }
+                offset.x = controller_x;
+                offset.y += SQUARE_SIZE;
+        }
+
         offset.y += SQUARE_SIZE;
-    }
+        DrawText(TextFormat("Level: %02d", g_level), offset.x, offset.y, 12, GRAY);
 
-    offset.x += (SQUARE_SIZE * (GRID_X_SIZE + 3));
-    offset.y = controller_y + (SQUARE_SIZE);
-    controller_x = offset.x;
-    controller_y = offset.y;
-
-    DrawText("INCOMING:", offset.x, offset.y - 20, 10, GRAY);
-    for(i = 0; i < 4; ++i) {
-        for(j = 0; j < 4; ++j) {
-            if(incoming_piece[i][j] == EMPTY) {
-                DrawLine(offset.x, offset.y, offset.x + SQUARE_SIZE, offset.y, LIGHTGRAY);
-                DrawLine(offset.x, offset.y, offset.x, offset.y + SQUARE_SIZE, LIGHTGRAY);
-                DrawLine(offset.x + SQUARE_SIZE, offset.y, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, LIGHTGRAY);
-                DrawLine(offset.x, offset.y + SQUARE_SIZE, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, LIGHTGRAY);
-            } else if(incoming_piece[i][j] == MOVING) {
-                DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, incoming_piece_color);
-            }
-            offset.x += SQUARE_SIZE;
+        if(b_pause) {
+            DrawText("GAME PAUSED", (SCREEN_WIDTH - MeasureText("GAME_PAUSED", 40)) / 2, SCREEN_HEIGHT / 2 - 40 , 40, GRAY);
         }
-            offset.x = controller_x;
-            offset.y += SQUARE_SIZE;
-    }
-
-    offset.y += (SQUARE_SIZE * 2);
-    controller_y = offset.y;
-
-    DrawText("HOLD:", offset.x, offset.y - 20, 10, GRAY);
-    for(i = 0; i < 4; ++i) {
-        for(j = 0; j < 4; ++j) {
-            if(hold_piece[i][j] == EMPTY) {
-                DrawLine(offset.x, offset.y, offset.x + SQUARE_SIZE, offset.y, LIGHTGRAY);
-                DrawLine(offset.x, offset.y, offset.x, offset.y + SQUARE_SIZE, LIGHTGRAY);
-                DrawLine(offset.x + SQUARE_SIZE, offset.y, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, LIGHTGRAY);
-                DrawLine(offset.x, offset.y + SQUARE_SIZE, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, LIGHTGRAY);
-            } else if(hold_piece[i][j] == MOVING) {
-                DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, hold_piece_color);
-            }
-
-            offset.x += SQUARE_SIZE;
-        }
-            offset.x = controller_x;
-            offset.y += SQUARE_SIZE;
-    }
-
-    offset.y += SQUARE_SIZE;
-    DrawText(TextFormat("Level: %02d", g_level), offset.x, offset.y, 12, GRAY);
-
-    if(b_pause) {
-        DrawText("GAME PAUSED", (SCREEN_WIDTH - MeasureText("GAME_PAUSED", 40)) / 2, SCREEN_HEIGHT / 2 - 40 , 40, GRAY);
+    } else {
+        // game over 문구
     }
 
     EndDrawing();
@@ -339,18 +355,49 @@ static void update_draw_frame(void) {
         }
 
         if(!b_pause) {
-            if(!b_piece_active) {
-                b_piece_active = create_piece();
-            } else {
-                gravity_movement_counter++;
+            if(!b_line_to_delete) {
+                if(!b_piece_active) {
+                    b_piece_active = create_piece();
+                } else {
+                    ++gravity_movement_counter;
+                    ++lateral_movement_counter;
+                    ++turn_movement_counter;
 
-                if(gravity_movement_counter >= g_speed) {
-                    check_detection(&b_detection);
-                    resolve_falling_movement(&b_detection, &b_piece_active);
-                    check_completion(&b_line_to_delete);
-                    gravity_movement_counter = 0;
+                    if(IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT)) {
+                        lateral_movement_counter = LATERAL_SPEED;
+                    }
+
+                    if(IsKeyPressed(KEY_UP)) {
+                        turn_movement_counter = TURNING_SPEED;
+                    }
+
+                    if(gravity_movement_counter >= g_speed) {
+                        check_detection(&b_detection);
+                        resolve_falling_movement(&b_detection, &b_piece_active);
+                        check_completion(&b_line_to_delete);
+                        gravity_movement_counter = 0;
+                    }
+
+                    if(lateral_movement_counter >= LATERAL_SPEED) {
+                        if(!resolve_lateral_movement()) {
+                            lateral_movement_counter = 0;
+                        }
+                    }
+
+                    if(turn_movement_counter >= TURNING_SPEED) {
+                        if(resolve_turn_movement()) {
+                            turn_movement_counter = 0;
+                        }
+                    }
                 }
+            } else {
+                // delete line
             }
+        }
+    } else {
+        if(IsKeyPressed(KEY_ENTER)) {
+            init_game();
+            b_game_over = false;
         }
     }
 }
@@ -396,8 +443,211 @@ static void resolve_falling_movement(bool* b_detection, bool* b_piece_active) {
                 }
             }
         }
-        piece_position_y++;
+        ++piece_position_y;
     }
+}
+
+static bool resolve_lateral_movement(void) {
+    bool collision = false;
+
+    if(IsKeyDown(KEY_LEFT)) {
+        for(int i = GRID_Y_SIZE - 2; i >= 0 ; --i) {
+            for(int j = 1; j < GRID_X_SIZE - 1; ++j) {
+                if(grid[i][j] == MOVING) {
+                    if(i == 1 || grid[i][j - 1] == FULL || grid[i][j - 1] == BLOCK) {
+                        collision = true;
+                    }
+                }
+            }
+        }
+
+        if(!collision) {
+            for(int i = GRID_Y_SIZE - 2; i >= 0 ; --i) {
+                for(int j = 1; j < GRID_X_SIZE - 1; ++j) {
+                    if(grid[i][j] == MOVING) {
+                        grid[i][j - 1] = MOVING;
+                        grid[i][j] = EMPTY;
+                    }
+                }
+            }
+
+            --piece_position_x;
+        }
+    } else if(IsKeyDown(KEY_RIGHT)) {
+        for(int i = GRID_Y_SIZE - 2; i >= 0 ; --i) {
+            for(int j = 1; j < GRID_X_SIZE - 1; ++j) {
+                if(grid[i][j] == MOVING) {
+                    if(i == GRID_X_SIZE - 1 || grid[i][j + 1] == FULL || grid[i][j + 1] == BLOCK) {
+                        collision = true;
+                    }
+                }
+            }
+        }
+
+        if(!collision) {
+            for(int i = GRID_Y_SIZE - 2; i >= 0 ; --i) {
+                for(int j = GRID_X_SIZE - 2; j >= 1; --j) {
+                    if(grid[i][j] == MOVING) {
+                        grid[i][j + 1] = MOVING;
+                        grid[i][j] = EMPTY;
+                    }
+                }
+            }
+
+            ++piece_position_x;
+        }
+    }
+
+    return collision;
+}
+
+static bool resolve_turn_movement(void) {
+    if(IsKeyDown(KEY_UP)) {
+        grid_square_t temp;
+        bool checker = false;
+
+        if(grid[piece_position_y][piece_position_x + 3] == MOVING &&
+            (grid[piece_position_y][piece_position_x] != EMPTY &&
+            grid[piece_position_y][piece_position_x] != MOVING)) {
+            checker = true;
+        }
+
+        if(grid[piece_position_y + 3][piece_position_x + 3] == MOVING &&
+            grid[piece_position_y][piece_position_x + 3] != EMPTY &&
+            grid[piece_position_y][piece_position_x + 3] != MOVING) {
+            checker = true;
+        }
+
+        if(grid[piece_position_y + 3][piece_position_x] == MOVING &&
+            grid[piece_position_y + 3][piece_position_x + 3] != EMPTY &&
+            grid[piece_position_y + 3][piece_position_x + 3] != MOVING) {
+            checker = true;
+        }
+
+        if(grid[piece_position_y][piece_position_x] == MOVING &&
+            grid[piece_position_y + 3][piece_position_x] != EMPTY &&
+            grid[piece_position_y + 3][piece_position_x] != MOVING) {
+            checker = true;
+        }
+
+        if(grid[piece_position_y][piece_position_x + 1] == MOVING &&
+            grid[piece_position_y + 2][piece_position_x] != EMPTY &&
+            grid[piece_position_y + 2][piece_position_x] != MOVING) {
+            checker = true;
+        }
+
+        if(grid[piece_position_y + 1][piece_position_x + 3] == MOVING &&
+            grid[piece_position_y][piece_position_x + 1] != EMPTY &&
+            grid[piece_position_y][piece_position_x + 1] != MOVING) {
+            checker = true;
+        }
+
+        if(grid[piece_position_y + 3][piece_position_x + 2] == MOVING &&
+            grid[piece_position_y + 1][piece_position_x + 3] != EMPTY &&
+            grid[piece_position_y + 1][piece_position_x + 3] != MOVING) {
+            checker = true;
+        }
+
+        if(grid[piece_position_y + 2][piece_position_x] == MOVING &&
+            grid[piece_position_y + 3][piece_position_x + 2] != EMPTY &&
+            grid[piece_position_y + 3][piece_position_x + 2] != MOVING) {
+            checker = true;
+        }
+
+        if(grid[piece_position_y][piece_position_x + 2] == MOVING &&
+            grid[piece_position_y + 1][piece_position_x] != EMPTY &&
+            grid[piece_position_y + 1][piece_position_x] != MOVING) {
+            checker = true;
+        }
+
+        if(grid[piece_position_y + 2][piece_position_x + 3] == MOVING &&
+            grid[piece_position_y][piece_position_x + 2] != EMPTY &&
+            grid[piece_position_y][piece_position_x + 2] != MOVING) {
+            checker = true;
+        }
+
+        if(grid[piece_position_y + 3][piece_position_x + 1] == MOVING &&
+            grid[piece_position_y + 2][piece_position_x + 3] != EMPTY &&
+            grid[piece_position_y + 2][piece_position_x + 3] != MOVING) {
+            checker = true;
+        }
+
+        if(grid[piece_position_y + 1][piece_position_x] == MOVING &&
+            grid[piece_position_y + 3][piece_position_x + 1] != EMPTY &&
+            grid[piece_position_y + 3][piece_position_x + 1] != MOVING) {
+            checker = true;
+        }
+
+        if(grid[piece_position_y + 1][piece_position_x + 1] == MOVING &&
+            grid[piece_position_y + 2][piece_position_x + 1] != EMPTY &&
+            grid[piece_position_y + 2][piece_position_x + 1] != MOVING) {
+            checker = true;
+        }
+
+        if(grid[piece_position_y + 1][piece_position_x + 2] == MOVING &&
+            grid[piece_position_y + 1][piece_position_x + 1] != EMPTY &&
+            grid[piece_position_y + 1][piece_position_x + 1] != MOVING) {
+            checker = true;
+        }
+
+        if(grid[piece_position_y + 2][piece_position_x + 2] == MOVING &&
+            grid[piece_position_y + 1][piece_position_x + 2] != EMPTY &&
+            grid[piece_position_y + 1][piece_position_x + 2] != MOVING) {
+            checker = true;
+        }
+
+        if(grid[piece_position_y + 1][piece_position_x + 2] == MOVING &&
+            grid[piece_position_y + 2][piece_position_x + 2] != EMPTY &&
+            grid[piece_position_y + 2][piece_position_x + 2] != MOVING) {
+            checker = true;
+        }
+
+        if(!checker) {
+            temp = piece[0][0];
+            piece[0][0] = piece[0][3];
+            piece[0][3] = piece[3][3];
+            piece[3][3] = piece[3][0];
+            piece[3][0] = temp;
+
+            temp = piece[0][1];
+            piece[0][1] = piece[1][3];
+            piece[1][3] = piece[3][2];
+            piece[3][2] = piece[2][0];
+            piece[2][0] = temp;
+
+            temp = piece[0][2];
+            piece[0][2] = piece[2][3];
+            piece[2][3] = piece[3][1];
+            piece[3][1] = piece[1][0];
+            piece[1][0] = temp;
+
+            temp = piece[1][1];
+            piece[1][1] = piece[1][2];
+            piece[1][2] = piece[2][2];
+            piece[2][2] = piece[2][1];
+            piece[2][1] = temp;
+        }
+
+        for(int i = GRID_Y_SIZE - 2; i >= 0 ; --i) {
+            for(int j = 1; j < GRID_X_SIZE - 1; ++j) {
+                if(grid[i][j] == MOVING) {
+                    grid[i][j] = EMPTY;
+                }
+            }
+        }
+
+        for(int i = piece_position_y; i < piece_position_y + 4; ++i) {
+            for(int j = piece_position_x; j < piece_position_x + 4; ++j) {
+                if(piece[i - piece_position_y][j - piece_position_x] == MOVING) {
+                    grid[i][j] = MOVING;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    return false;
 }
 
 static void check_completion(bool* b_line_to_delete) {
@@ -407,7 +657,7 @@ static void check_completion(bool* b_line_to_delete) {
         calculator = 0;
         for(int j = 1; j < GRID_X_SIZE - 1; ++j) {
             if(grid[i][j] == FULL) {
-                calculator++;
+                ++calculator;
             }
 
             if(calculator == GRID_Y_SIZE - 2) {
@@ -424,8 +674,10 @@ static void check_completion(bool* b_line_to_delete) {
 
 static bool create_piece(void) {
     int piece_num;
+    piece_position_x = (int)((GRID_X_SIZE - 4) / 2);
+    piece_position_y = 0;
 
-    if(b_begin_play) {
+    if(b_begin_play) { // first block creation
         piece_num = get_random_piece();
         current_piece_num = piece_num;
         b_begin_play = false;
@@ -446,9 +698,9 @@ static bool create_piece(void) {
     incoming_piece_color = get_piece_color(piece_num);
 
     for(int i = 0; i < 4; ++i) {
-        for(int j = 0; j < 4; ++j) {
-            if(piece[i][j] == MOVING) {
-                grid[i][j + 4] = MOVING;
+        for(int j = piece_position_x; j < piece_position_x + 4; ++j) {
+            if(piece[i][j - piece_position_x] == MOVING) {
+                grid[i][j] = MOVING;
             }
         }
     }
@@ -456,6 +708,7 @@ static bool create_piece(void) {
     return true;
 }
 
+// generate block randomly
 static int get_random_piece(void) {
     const int random = GetRandomValue(0, 6);
     clean_4_by_4(incoming_piece);
@@ -508,6 +761,7 @@ static int get_random_piece(void) {
     return random;
 }
 
+// assign a certain color for a certain shape
 Color get_piece_color(const int num) {
     Color piece_color;
 
