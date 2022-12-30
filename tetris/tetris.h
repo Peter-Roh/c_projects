@@ -31,7 +31,8 @@ enum {
     SCREEN_WIDTH = 442,
     SCREEN_HEIGHT = 450,
     LATERAL_SPEED = 15,
-    TURNING_SPEED = 12
+    TURNING_SPEED = 12,
+    FAST_FALL_AWAIT_COUNTER = 30
 };
 
 static void draw_init_page(void);

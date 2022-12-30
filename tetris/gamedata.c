@@ -21,6 +21,7 @@ void reset_game_state(game_state_t* self) {
 }
 
 void reset_counter(counter_t* self) {
+    self->fast_fall_movement_counter = 0;
     self->gravity_movement_counter = 0;
     self->lateral_movement_counter = 0;
     self->turn_movement_counter = 0;
@@ -102,6 +103,14 @@ void set_finished_piece_num(game_state_t* self, int val) {
 // counter_t functions
 // --------------------------------------------------
 
+void increment_fast_fall_movement_counter(counter_t* self) {
+    ++(self->fast_fall_movement_counter);
+}
+
+void decrement_fast_fall_movement_counter(counter_t* self) {
+    --(self->fast_fall_movement_counter);
+}
+
 void increment_gravity_movement_counter(counter_t* self) {
     ++(self->gravity_movement_counter);
 }
@@ -124,6 +133,10 @@ void increment_turn_movement_counter(counter_t* self) {
 
 void decrement_turn_movement_counter(counter_t* self) {
     --(self->turn_movement_counter);
+}
+
+void set_fast_fall_movement_counter(counter_t* self, int val) {
+    self->fast_fall_movement_counter = val;
 }
 
 void set_gravity_movement_counter(counter_t* self, int val) {

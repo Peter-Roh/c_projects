@@ -263,7 +263,9 @@ static void update_draw_frame(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE], grid
         if(!game_state->b_line_to_delete) {
             if(!game_state->b_piece_active) {
                 set_piece_active(game_state, create_piece(grid, incoming_piece, piece, game_state, current_piece_color, incoming_piece_color));
+                set_fast_fall_movement_counter(counter, 0);
             } else {
+                increment_fast_fall_movement_counter(counter);
                 increment_gravity_movement_counter(counter);
                 increment_lateral_movement_counter(counter);
                 increment_turn_movement_counter(counter);
@@ -274,6 +276,10 @@ static void update_draw_frame(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE], grid
 
                 if(IsKeyPressed(KEY_UP)) {
                     set_turn_movement_counter(counter, TURNING_SPEED);
+                }
+
+                if(IsKeyDown(KEY_DOWN) && (counter->fast_fall_movement_counter >= FAST_FALL_AWAIT_COUNTER)) {
+                    set_gravity_movement_counter(counter, counter->gravity_movement_counter + game_state->g_speed);
                 }
 
                 if(counter->gravity_movement_counter >= game_state->g_speed) {

@@ -20,6 +20,7 @@ typedef struct game_state_t {
 } game_state_t;
 
 typedef struct counter_t {
+    int fast_fall_movement_counter;
     int gravity_movement_counter;
     int lateral_movement_counter;
     int turn_movement_counter;
@@ -52,12 +53,15 @@ void set_finished_piece_num(game_state_t* self, int val);
 
 // counter_t functions
 
+void increment_fast_fall_movement_counter(counter_t* self);
+void decrement_fast_fall_movement_counter(counter_t* self);
 void increment_gravity_movement_counter(counter_t* self);
 void decrement_gravity_movement_counter(counter_t* self);
 void increment_lateral_movement_counter(counter_t* self);
 void decrement_lateral_movement_counter(counter_t* self);
 void increment_turn_movement_counter(counter_t* self);
 void decrement_turn_movement_counter(counter_t* self);
+void set_fast_fall_movement_counter(counter_t* self, int val);
 void set_gravity_movement_counter(counter_t* self, int val);
 void set_lateral_movement_counter(counter_t* self, int val);
 void set_turn_movement_counter(counter_t* self, int val);
