@@ -11,6 +11,7 @@ typedef struct game_state_t {
     bool b_piece_active; // 현재 블록이 이동 중인가
     bool b_detection; // 낙하 충돌 감지
     bool b_line_to_delete;
+    bool b_hard_drop;
     int g_level;
     int g_speed;
     int piece_position_x;
@@ -40,6 +41,7 @@ void set_pause(game_state_t* self, bool val);
 void set_piece_active(game_state_t* self, bool val);
 void set_detection(game_state_t* self, bool val);
 void set_line_to_delete(game_state_t* self, bool val);
+void set_hard_drop(game_state_t* self, bool val);
 void set_level(game_state_t* self, int val);
 void set_speed(game_state_t* self, int val);
 void set_piece_position_x(game_state_t* self, int val);

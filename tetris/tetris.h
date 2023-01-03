@@ -2,7 +2,6 @@
 #define TETRIS_H
 
 #include <raylib.h>
-
 #include "gamedata.h"
 
 // --------------------------------------------------

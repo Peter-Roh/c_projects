@@ -9,6 +9,7 @@ void reset_game_state(game_state_t* self) {
     self->b_begin_game = false;
     self->b_begin_play = true;
     self->b_pause = false;
+    self->b_hard_drop = false;
     self->b_piece_active = false;
     self->b_detection = false;
     self->b_line_to_delete = false;
@@ -57,6 +58,10 @@ void set_detection(game_state_t* self, bool val) {
 
 void set_line_to_delete(game_state_t* self, bool val) {
     self->b_line_to_delete = val;
+}
+
+void set_hard_drop(game_state_t* self, bool val) {
+    self->b_hard_drop = val;
 }
 
 void set_level(game_state_t* self, int val) {

@@ -1,9 +1,9 @@
+#include <assert.h>
+#include <math.h>
 #include <raylib.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <math.h>
 #include <time.h>
-
 #include "gamedata.h"
 #include "tetris.h"
 
@@ -265,40 +265,50 @@ static void update_draw_frame(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE], grid
                 set_piece_active(game_state, create_piece(grid, incoming_piece, piece, game_state, current_piece_color, incoming_piece_color));
                 set_fast_fall_movement_counter(counter, 0);
             } else {
-                increment_fast_fall_movement_counter(counter);
-                increment_gravity_movement_counter(counter);
-                increment_lateral_movement_counter(counter);
-                increment_turn_movement_counter(counter);
+                if(!game_state->b_hard_drop) {
+                    increment_fast_fall_movement_counter(counter);
+                    increment_gravity_movement_counter(counter);
+                    increment_lateral_movement_counter(counter);
+                    increment_turn_movement_counter(counter);
 
-                if(IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT)) {
-                    set_lateral_movement_counter(counter, LATERAL_SPEED);
-                }
+                    if(IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT)) {
+                        set_lateral_movement_counter(counter, LATERAL_SPEED);
+                    }
 
-                if(IsKeyPressed(KEY_UP)) {
-                    set_turn_movement_counter(counter, TURNING_SPEED);
-                }
+                    if(IsKeyPressed(KEY_UP)) {
+                        set_turn_movement_counter(counter, TURNING_SPEED);
+                    }
 
-                if(IsKeyDown(KEY_DOWN) && (counter->fast_fall_movement_counter >= FAST_FALL_AWAIT_COUNTER)) {
-                    set_gravity_movement_counter(counter, counter->gravity_movement_counter + game_state->g_speed);
-                }
+                    if(IsKeyDown(KEY_DOWN) && (counter->fast_fall_movement_counter >= FAST_FALL_AWAIT_COUNTER)) {
+                        set_gravity_movement_counter(counter, counter->gravity_movement_counter + game_state->g_speed);
+                    }
 
-                if(counter->gravity_movement_counter >= game_state->g_speed) {
+                    if(IsKeyDown(KEY_SPACE)) {
+                        set_hard_drop(game_state, true);
+                    }
+
+                    if(counter->gravity_movement_counter >= game_state->g_speed) {
+                        check_detection(grid, game_state);
+                        resolve_falling_movement(grid, game_state);
+                        check_completion(grid, game_state);
+                        set_gravity_movement_counter(counter, 0);
+                    }
+
+                    if(counter->lateral_movement_counter >= LATERAL_SPEED) {
+                        if(!resolve_lateral_movement(grid, game_state)) {
+                            set_lateral_movement_counter(counter, 0);
+                        }
+                    }
+
+                    if(counter->turn_movement_counter >= TURNING_SPEED) {
+                        if(resolve_turn_movement(grid, piece, game_state)) {
+                            set_turn_movement_counter(counter, 0);
+                        }
+                    }
+                } else { // hard drop 인 경우
                     check_detection(grid, game_state);
                     resolve_falling_movement(grid, game_state);
                     check_completion(grid, game_state);
-                    set_gravity_movement_counter(counter, 0);
-                }
-
-                if(counter->lateral_movement_counter >= LATERAL_SPEED) {
-                    if(!resolve_lateral_movement(grid, game_state)) {
-                        set_lateral_movement_counter(counter, 0);
-                    }
-                }
-
-                if(counter->turn_movement_counter >= TURNING_SPEED) {
-                    if(resolve_turn_movement(grid, piece, game_state)) {
-                        set_turn_movement_counter(counter, 0);
-                    }
                 }
             }
         } else {
@@ -339,6 +349,7 @@ static void resolve_falling_movement(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE
             }
         }
         save_color(grid, game_state->finished_piece_num);
+        set_hard_drop(game_state, false);
     } else { // move piece down
         for(int i = GRID_Y_SIZE - 2; i >= 0 ; --i) {
             for(int j = 1; j < GRID_X_SIZE - 1; ++j) {
@@ -665,6 +676,9 @@ static int get_random_piece(grid_square_t incoming_piece[4][4]) {
             incoming_piece[1][2] = MOVING;
             incoming_piece[2][1] = MOVING;
             break;
+        default:
+            assert(0);
+            break;
     }
 
     return random;
@@ -695,6 +709,9 @@ static Color get_piece_color(const int num) {
             break;
         case 6: // Z
             piece_color = MAROON;
+            break;
+        default:
+            assert(0);
             break;
     }
 
