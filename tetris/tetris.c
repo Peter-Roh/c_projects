@@ -247,8 +247,18 @@ static void draw_map(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE], grid_square_t
         if(game_state->b_pause) {
             DrawText("GAME PAUSED", (SCREEN_WIDTH - MeasureText("GAME_PAUSED", 40)) / 2, SCREEN_HEIGHT / 2 - 40 , 40, GRAY);
         }
-    } else {
-        // game over 문구
+    } else { // game over 문구
+        struct timespec specific_time;
+        clock_gettime(CLOCK_REALTIME, &specific_time);
+        const int time_seed = floor(specific_time.tv_nsec / 1.0e6);
+
+        if(time_seed < 500) {
+            DrawText("GAME OVER!", (SCREEN_WIDTH - MeasureText("GAME OVER!", 20)) / 2, SCREEN_HEIGHT / 2 - 60 , 20, GRAY);
+            DrawText("PRESS [ENTER] TO PLAY AGAIN...", (SCREEN_WIDTH - MeasureText("PRESS [ENTER] TO PLAY AGAIN...", 20)) / 2, SCREEN_HEIGHT / 2 - 40 , 20, GRAY);
+        } else {
+            DrawText("GAME OVER!", (SCREEN_WIDTH - MeasureText("GAME OVER!", 20)) / 2, SCREEN_HEIGHT / 2 - 60 , 20, WHITE);
+            DrawText("PRESS [ENTER] TO PLAY AGAIN...", (SCREEN_WIDTH - MeasureText("PRESS [ENTER] TO PLAY AGAIN...", 20)) / 2, SCREEN_HEIGHT / 2 - 40 , 20, WHITE);
+        }
     }
 
     EndDrawing();
@@ -309,6 +319,15 @@ static void update_draw_frame(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE], grid
                     check_detection(grid, game_state);
                     resolve_falling_movement(grid, game_state);
                     check_completion(grid, game_state);
+                }
+            }
+
+            // game over logic
+            for(int i = 0; i < 2; ++i) {
+                for(int j = 1; j < GRID_X_SIZE - 1; ++j) {
+                    if(grid[i][j] >= FULL) {
+                        set_game_over(game_state, true);
+                    }
                 }
             }
         } else {
@@ -749,6 +768,7 @@ int main(void) {
                 if(IsKeyPressed(KEY_ENTER)) { // restart
                     init_game(grid, incoming_piece, hold_piece, piece, &game_state, &counter);
                     set_game_over(&game_state, false);
+                    set_begin_game(&game_state , true);
                 }
             }
             draw_map(grid, incoming_piece, hold_piece, &game_state, &current_piece_color, &incoming_piece_color, &hold_piece_color);
