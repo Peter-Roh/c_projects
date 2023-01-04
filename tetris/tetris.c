@@ -366,7 +366,7 @@ static void check_detection(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE], game_s
     for(int i = GRID_Y_SIZE - 2; i >= 0 ; --i) {
         for(int j = 1; j < GRID_X_SIZE - 1; ++j) {
             if((grid[i][j] == MOVING) && ((grid[i + 1][j] >= FULL) || (grid[i + 1][j] == BLOCK))) {
-                game_state->b_detection = true;
+                set_detection(game_state, true);
             }
         }
     }
@@ -407,7 +407,7 @@ static bool resolve_lateral_movement(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE
         for(int i = GRID_Y_SIZE - 2; i >= 0 ; --i) {
             for(int j = 1; j < GRID_X_SIZE - 1; ++j) {
                 if(grid[i][j] == MOVING) {
-                    if(i == 1 || grid[i][j - 1] >= FULL || grid[i][j - 1] == BLOCK) {
+                    if(j == 1 || grid[i][j - 1] >= FULL) {
                         collision = true;
                     }
                 }
@@ -430,7 +430,7 @@ static bool resolve_lateral_movement(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE
         for(int i = GRID_Y_SIZE - 2; i >= 0 ; --i) {
             for(int j = 1; j < GRID_X_SIZE - 1; ++j) {
                 if(grid[i][j] == MOVING) {
-                    if(i == GRID_X_SIZE - 1 || grid[i][j + 1] >= FULL || grid[i][j + 1] == BLOCK) {
+                    if(j == GRID_X_SIZE - 2 || grid[i][j + 1] >= FULL) {
                         collision = true;
                     }
                 }
@@ -657,6 +657,7 @@ static bool create_piece(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE], grid_squa
     int piece_num;
     set_piece_position_x(game_state, (int)((GRID_X_SIZE - 4) / 2));
     set_piece_position_y(game_state, 0);
+    bool b_collision = false;
 
     if(game_state->b_begin_play) { // first block creation
         piece_num = get_random_piece(incoming_piece);
@@ -680,10 +681,22 @@ static bool create_piece(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE], grid_squa
 
     for(int i = 0; i < 4; ++i) {
         for(int j = game_state->piece_position_x; j < game_state->piece_position_x + 4; ++j) {
-            if(piece[i][j - game_state->piece_position_x] == MOVING) {
-                grid[i][j] = MOVING;
+            if(grid[i][j] != EMPTY && piece[i][j - game_state->piece_position_x] == MOVING) {
+                b_collision = true;
             }
         }
+    }
+
+    if(!b_collision) {
+        for(int i = 0; i < 4; ++i) {
+            for(int j = game_state->piece_position_x; j < game_state->piece_position_x + 4; ++j) {
+                if(piece[i][j - game_state->piece_position_x] == MOVING) {
+                    grid[i][j] = MOVING;
+                }
+            }
+        }
+    } else {
+        set_game_over(game_state, true);
     }
 
     return true;
@@ -783,10 +796,6 @@ static Color get_piece_color(const int num) {
     return piece_color;
 }
 
-// unload game variables
-static void unload_game(void) {
-}
-
 int main(void) {
     game_state_t game_state;
     counter_t counter;
@@ -821,7 +830,6 @@ int main(void) {
         }
     }
 
-    unload_game();
     CloseWindow();
 
     return 0;

@@ -50,6 +50,5 @@ static void check_completion(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE], game_
 static bool create_piece(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE], grid_square_t incoming_piece[4][4], grid_square_t piece[4][4], game_state_t* game_state, Color* current_piece_color, Color* incoming_piece_color);
 static int get_random_piece(grid_square_t incoming_piece[4][4]);
 static Color get_piece_color(const int num);
-static void unload_game(void);
 
 #endif /* TETRIS_H */
