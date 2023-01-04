@@ -21,10 +21,11 @@ typedef struct game_state_t {
 } game_state_t;
 
 typedef struct counter_t {
-    int fast_fall_movement_counter;
-    int gravity_movement_counter;
-    int lateral_movement_counter;
-    int turn_movement_counter;
+    int fast_fall_movement_counter; // block soft drop
+    int gravity_movement_counter; // block 하강
+    int lateral_movement_counter; // block 좌우 이동
+    int turn_movement_counter; // block 회전
+    int fade_line_counter; // fade line
 } counter_t;
 
 // reset data
@@ -63,9 +64,12 @@ void increment_lateral_movement_counter(counter_t* self);
 void decrement_lateral_movement_counter(counter_t* self);
 void increment_turn_movement_counter(counter_t* self);
 void decrement_turn_movement_counter(counter_t* self);
+void increment_fade_line_counter(counter_t* self);
+void decrement_fade_line_counter(counter_t* self);
 void set_fast_fall_movement_counter(counter_t* self, int val);
 void set_gravity_movement_counter(counter_t* self, int val);
 void set_lateral_movement_counter(counter_t* self, int val);
 void set_turn_movement_counter(counter_t* self, int val);
+void set_fade_line_counter(counter_t* self, int val);
 
 #endif /* GAMEDATA_H */

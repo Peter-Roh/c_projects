@@ -26,6 +26,7 @@ void reset_counter(counter_t* self) {
     self->gravity_movement_counter = 0;
     self->lateral_movement_counter = 0;
     self->turn_movement_counter = 0;
+    self->fade_line_counter = 0;
 }
 
 // --------------------------------------------------
@@ -140,6 +141,14 @@ void decrement_turn_movement_counter(counter_t* self) {
     --(self->turn_movement_counter);
 }
 
+void increment_fade_line_counter(counter_t* self) {
+    ++(self->fade_line_counter);
+}
+
+void decrement_fade_line_counter(counter_t* self) {
+    --(self->fade_line_counter);
+}
+
 void set_fast_fall_movement_counter(counter_t* self, int val) {
     self->fast_fall_movement_counter = val;
 }
@@ -154,4 +163,8 @@ void set_lateral_movement_counter(counter_t* self, int val) {
 
 void set_turn_movement_counter(counter_t* self, int val) {
     self->turn_movement_counter = val;
+};
+
+void set_fade_line_counter(counter_t* self, int val) {
+    self->fade_line_counter = val;
 };

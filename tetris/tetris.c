@@ -158,17 +158,24 @@ static void init_game(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE], grid_square_
     }
 }
 
-static void draw_map(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE], grid_square_t incoming_piece[4][4], grid_square_t hold_piece[4][4], game_state_t* game_state, Color* current_piece_color, Color* incoming_piece_color, Color* hold_piece_color) {
+static void draw_map(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE], grid_square_t incoming_piece[4][4], grid_square_t hold_piece[4][4], game_state_t* game_state, Color* current_piece_color, Color* incoming_piece_color, Color* hold_piece_color, counter_t* counter) {
     BeginDrawing();
     ClearBackground(WHITE);
 
     if(!game_state->b_game_over) {
         Color square_color;
+        Color fading_color;
         Vector2 offset;
         offset.x = 22;
         offset.y = 12;
         int controller_x = offset.x;
         int controller_y = offset.y;
+
+        if(counter->fade_line_counter % 8 < 4) {
+            fading_color = DARKGRAY;
+        } else {
+            fading_color = LIGHTGRAY;
+        }
 
         for(int i = 0; i < GRID_Y_SIZE; ++i) {
             for(int j = 0; j < GRID_X_SIZE; ++j) {
@@ -185,6 +192,8 @@ static void draw_map(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE], grid_square_t
                     DrawLine(offset.x + SQUARE_SIZE, offset.y, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, LIGHTGRAY);
                     DrawLine(offset.x, offset.y + SQUARE_SIZE, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, LIGHTGRAY);
                     DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, *current_piece_color);
+                } else if(grid[i][j] == FADING) {
+                    DrawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, fading_color);
                 } else if(grid[i][j] >= FULL) {
                     square_color = get_piece_color(grid[i][j] - 5);
                     DrawLine(offset.x, offset.y, offset.x + SQUARE_SIZE, offset.y, LIGHTGRAY);
@@ -330,8 +339,15 @@ static void update_draw_frame(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE], grid
                     }
                 }
             }
-        } else {
-            // delete line
+        } else { // delete line
+            increment_fade_line_counter(counter);
+
+            if(counter->fade_line_counter >= FADING_TIME) {
+                int deleted_lines = 0;
+                deleted_lines = delete_complete_lines(grid);
+                set_fade_line_counter(counter, 0);
+                set_line_to_delete(game_state, false);
+            }
         }
     }
 }
@@ -368,7 +384,9 @@ static void resolve_falling_movement(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE
             }
         }
         save_color(grid, game_state->finished_piece_num);
-        set_hard_drop(game_state, false);
+        if(game_state->b_hard_drop) {
+            set_hard_drop(game_state, false);
+        }
     } else { // move piece down
         for(int i = GRID_Y_SIZE - 2; i >= 0 ; --i) {
             for(int j = 1; j < GRID_X_SIZE - 1; ++j) {
@@ -585,6 +603,34 @@ static bool resolve_turn_movement(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE], 
     return false;
 }
 
+static int delete_complete_lines(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE]) {
+    int deleted_lines = 0;
+
+    for(int i = GRID_Y_SIZE - 2; i >= 0; --i) {
+        while(grid[i][1] == FADING) {
+            for(int j = 1; j < GRID_X_SIZE - 1; ++j) {
+                grid[i][j] = EMPTY;
+            }
+
+            for(int k = i - 1; k >= 0; --k) {
+                for(int l = 1; l < GRID_X_SIZE - 1; ++l) {
+                    if(grid[k][l] >= FULL) {
+                        grid[k + 1][l] = grid[k][l];
+                        grid[k][l] = EMPTY;
+                    } else if(grid[k][l] == FADING) {
+                        grid[k + 1][l] = FADING;
+                        grid[k][l] = EMPTY;
+                    }
+                }
+            }
+
+            ++deleted_lines;
+        }
+    }
+
+    return deleted_lines;
+}
+
 static void check_completion(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE], game_state_t* game_state) {
     int calculator;
 
@@ -595,12 +641,12 @@ static void check_completion(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE], game_
                 ++calculator;
             }
 
-            if(calculator == GRID_Y_SIZE - 2) {
+            if(calculator == GRID_X_SIZE - 2) {
                 set_line_to_delete(game_state, true);
                 calculator = 0;
 
                 for(int z = 1; z < GRID_X_SIZE - 1; ++z) {
-                    grid[z][i] = FADING;
+                    grid[i][z] = FADING;
                 }
             }
         }
@@ -771,7 +817,7 @@ int main(void) {
                     set_begin_game(&game_state , true);
                 }
             }
-            draw_map(grid, incoming_piece, hold_piece, &game_state, &current_piece_color, &incoming_piece_color, &hold_piece_color);
+            draw_map(grid, incoming_piece, hold_piece, &game_state, &current_piece_color, &incoming_piece_color, &hold_piece_color, &counter);
         }
     }
 
