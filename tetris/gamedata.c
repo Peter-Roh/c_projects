@@ -14,7 +14,8 @@ void reset_game_state(game_state_t* self) {
     self->b_detection = false;
     self->b_line_to_delete = false;
     self->g_level = 1;
-    self->g_speed = 30;
+    self->gravity_speed = 30;
+    self->g_lines = 0;
     self->piece_position_x = 0;
     self->piece_position_y = 0;
     self->current_piece_num = -1;
@@ -69,8 +70,12 @@ void set_level(game_state_t* self, int val) {
     self->g_level = val;
 }
 
-void set_speed(game_state_t* self, int val) {
-    self->g_speed = val;
+void set_gravity_speed(game_state_t* self, int val) {
+    self->gravity_speed = val;
+}
+
+void set_lines(game_state_t* self, int val) {
+    self->g_lines = val;
 }
 
 void set_piece_position_x(game_state_t* self, int val) {

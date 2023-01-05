@@ -138,6 +138,7 @@ static void check_game_start(game_state_t* game_state) {
 static void init_game(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE], grid_square_t incoming_piece[4][4], grid_square_t hold_piece[4][4], grid_square_t piece[4][4], game_state_t* game_state, counter_t* counter) {
     reset_game_state(game_state);
     reset_counter(counter);
+    SetTargetFPS(60);
 
     for(int i = 0; i < GRID_Y_SIZE; ++i) {
         for(int j = 0; j < GRID_X_SIZE; ++j) {
@@ -283,6 +284,7 @@ static void update_draw_frame(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE], grid
             if(!game_state->b_piece_active) {
                 set_piece_active(game_state, create_piece(grid, incoming_piece, piece, game_state, current_piece_color, incoming_piece_color));
                 set_fast_fall_movement_counter(counter, 0);
+                resolve_level(game_state);
             } else {
                 if(!game_state->b_hard_drop) {
                     increment_fast_fall_movement_counter(counter);
@@ -299,14 +301,14 @@ static void update_draw_frame(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE], grid
                     }
 
                     if(IsKeyDown(KEY_DOWN) && (counter->fast_fall_movement_counter >= FAST_FALL_AWAIT_COUNTER)) {
-                        set_gravity_movement_counter(counter, counter->gravity_movement_counter + game_state->g_speed);
+                        set_gravity_movement_counter(counter, counter->gravity_movement_counter + game_state->gravity_speed);
                     }
 
                     if(IsKeyDown(KEY_SPACE)) {
                         set_hard_drop(game_state, true);
                     }
 
-                    if(counter->gravity_movement_counter >= game_state->g_speed) {
+                    if(counter->gravity_movement_counter >= game_state->gravity_speed) {
                         check_detection(grid, game_state);
                         resolve_falling_movement(grid, game_state);
                         check_completion(grid, game_state);
@@ -347,8 +349,19 @@ static void update_draw_frame(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE], grid
                 deleted_lines = delete_complete_lines(grid);
                 set_fade_line_counter(counter, 0);
                 set_line_to_delete(game_state, false);
+                game_state->g_lines += deleted_lines;
             }
         }
+    }
+}
+
+static void resolve_level(game_state_t* game_state) {
+    int fps = GetFPS();
+    int current_level = game_state->g_level;
+    int new_level = game_state->g_lines / 10 + 1;
+    if(current_level != new_level) {
+        set_level(game_state, new_level);
+        SetTargetFPS(fps + 10);
     }
 }
 
@@ -809,7 +822,6 @@ int main(void) {
 
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "tetris");
     init_game(grid, incoming_piece, hold_piece, piece, &game_state, &counter);
-    SetTargetFPS(60);
 
     // main game loop
     while (!WindowShouldClose()) {

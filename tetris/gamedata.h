@@ -13,7 +13,8 @@ typedef struct game_state_t {
     bool b_line_to_delete;
     bool b_hard_drop;
     int g_level;
-    int g_speed;
+    int g_lines; // 클리어한 줄 수
+    int gravity_speed;
     int piece_position_x;
     int piece_position_y;
     int current_piece_num; // 현재 블록
@@ -44,7 +45,8 @@ void set_detection(game_state_t* self, bool val);
 void set_line_to_delete(game_state_t* self, bool val);
 void set_hard_drop(game_state_t* self, bool val);
 void set_level(game_state_t* self, int val);
-void set_speed(game_state_t* self, int val);
+void set_gravity_speed(game_state_t* self, int val);
+void set_lines(game_state_t* self, int val);
 void set_piece_position_x(game_state_t* self, int val);
 void increment_piece_position_x(game_state_t* self);
 void decrement_piece_position_x(game_state_t* self);
