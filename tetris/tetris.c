@@ -436,7 +436,6 @@ static bool resolve_lateral_movement(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE
                     }
                 }
             }
-
             decrement_piece_position_x(game_state);
         }
     } else if(IsKeyDown(KEY_RIGHT)) {
@@ -459,7 +458,6 @@ static bool resolve_lateral_movement(grid_square_t grid[GRID_Y_SIZE][GRID_X_SIZE
                     }
                 }
             }
-
             increment_piece_position_x(game_state);
         }
     }

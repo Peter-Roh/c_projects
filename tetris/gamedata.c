@@ -13,6 +13,7 @@ void reset_game_state(game_state_t* self) {
     self->b_piece_active = false;
     self->b_detection = false;
     self->b_line_to_delete = false;
+    self->b_hold = false;
     self->g_level = 1;
     self->gravity_speed = 30;
     self->g_lines = 0;
@@ -20,6 +21,7 @@ void reset_game_state(game_state_t* self) {
     self->piece_position_y = 0;
     self->current_piece_num = -1;
     self->finished_piece_num = -1;
+    self->hold_piece_num = -1;
 }
 
 void reset_counter(counter_t* self) {
@@ -66,6 +68,10 @@ void set_hard_drop(game_state_t* self, bool val) {
     self->b_hard_drop = val;
 }
 
+void set_hold(game_state_t* self, bool val) {
+    self->b_hold = val;
+}
+
 void set_level(game_state_t* self, int val) {
     self->g_level = val;
 }
@@ -108,6 +114,10 @@ void set_current_piece_num(game_state_t* self, int val) {
 
 void set_finished_piece_num(game_state_t* self, int val) {
     self->finished_piece_num = val;
+}
+
+void set_hold_piece_num(game_state_t* self, int val) {
+    self->hold_piece_num = val;
 }
 
 // --------------------------------------------------

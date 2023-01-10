@@ -12,6 +12,7 @@ typedef struct game_state_t {
     bool b_detection; // 낙하 충돌 감지
     bool b_line_to_delete;
     bool b_hard_drop;
+    bool b_hold;
     int g_level;
     int g_lines; // 클리어한 줄 수
     int gravity_speed;
@@ -19,6 +20,7 @@ typedef struct game_state_t {
     int piece_position_y;
     int current_piece_num; // 현재 블록
     int finished_piece_num; // 이동 끝난 블록
+    int hold_piece_num; // hold 된 블록
 } game_state_t;
 
 typedef struct counter_t {
